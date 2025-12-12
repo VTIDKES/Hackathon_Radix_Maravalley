@@ -1,15 +1,9 @@
 import streamlit as st
 import numpy as np
 import pandas as pd
-import plotly.graph_objects as go
-from sklearn.ensemble import RandomForestClassifier, IsolationForest
-from sklearn.linear_model import LinearRegression
 
 st.set_page_config(page_title="Hackathon Energia • VTS", layout="wide")
 
-# =====================================
-#           MENU
-# =====================================
 st.sidebar.title("⚡ Hackathon — Soluções para Energia")
 menu = st.sidebar.selectbox(
     "Selecione uma solução:",
@@ -20,113 +14,82 @@ menu = st.sidebar.selectbox(
     ]
 )
 
-# =====================================
-#   1) MONITORAMENTO DE FRAUDES
-# =====================================
+# ============================================================
+# 1) MONITORAMENTO DE FRAUDES (SEM SKLEARN)
+# ============================================================
 if menu == "📉 Monitoramento de Perdas e Fraudes":
-    st.title("📉 Monitoramento Inteligente de Perdas e Fraudes")
-    st.write("Detecção automática de anomalias via Isolation Forest (sklearn).")
+    st.title("📉 Monitoramento Inteligente de Perdas e Fraudes (Sem sklearn)")
+    st.write("Detecção simplificada baseada em Z-Score.")
 
-    file = st.file_uploader("Upload CSV com consumo", type=["csv"])
+    file = st.file_uploader("Upload CSV com a coluna 'consumption'", type=["csv"])
 
     if file:
         df = pd.read_csv(file)
-        st.write("Pré-visualização:")
+        st.write("Pré-visualização dos dados:")
         st.dataframe(df.head())
 
         if "consumption" not in df.columns:
-            st.error("Arquivo precisa conter a coluna 'consumption'")
-        else:
-            cont = st.slider("Nível de sensibilidade do detector", 0.001, 0.2, 0.05)
+            st.error("O CSV precisa da coluna 'consumption'.")
+            st.stop()
 
-            if st.button("Detectar Fraudes"):
-                model = IsolationForest(contamination=cont, random_state=42)
-                df["anomaly"] = model.fit_predict(df[["consumption"]])
-                df["anomaly"] = df["anomaly"].apply(lambda x: 1 if x == -1 else 0)
+        df["mean"] = df["consumption"].rolling(10, min_periods=1).mean()
+        df["std"] = df["consumption"].rolling(10, min_periods=1).std().fillna(0)
+        df["z_score"] = (df["consumption"] - df["mean"]) / df["std"].replace(0, 1)
 
-                st.metric("Total de anomalias detectadas", int(df["anomaly"].sum()))
+        threshold = st.slider("Sensibilidade (Z-score)", 1.5, 5.0, 3.0)
+        df["anomaly"] = df["z_score"].abs() > threshold
 
-                fig = go.Figure()
-                fig.add_trace(go.Scatter(
-                    y=df["consumption"],
-                    mode="lines",
-                    name="Consumo"
-                ))
-                fig.add_trace(go.Scatter(
-                    y=df.loc[df["anomaly"] == 1, "consumption"],
-                    mode="markers",
-                    name="Anomalias"
-                ))
-                st.plotly_chart(fig, use_container_width=True)
+        st.metric("Total de possíveis fraudes:", int(df["anomaly"].sum()))
 
-                st.download_button(
-                    "Baixar resultados",
-                    df.to_csv(index=False).encode("utf-8"),
-                    "resultados_fraudes.csv"
-                )
+        st.subheader("📉 Gráfico de Consumo")
+        st.line_chart(df["consumption"])
 
+        st.subheader("🔴 Pontos suspeitos")
+        st.write(df[df["anomaly"]])
 
-# =====================================
-#   2) PREVISÃO DE GERAÇÃO SOLAR
-# =====================================
+        st.download_button(
+            "Baixar relatório",
+            df.to_csv(index=False).encode("utf-8"),
+            file_name="fraudes_detectadas.csv"
+        )
+
+# ============================================================
+# 2) PREVISÃO DE GERAÇÃO SOLAR (SEM SKLEARN)
+# ============================================================
 elif menu == "🔆 Previsão de Geração Solar":
-    st.title("🔆 Previsão Inteligente de Geração Solar")
-    st.write("Modelo simples baseado em regressão linear.")
+    st.title("🔆 Previsão Simples de Geração Solar")
+    st.write("Modelo linear simples sem dependências externas.")
 
-    file = st.file_uploader("Upload CSV com irradiância/temperatura", type=["csv"])
+    irr = st.slider("Irradiância (W/m²)", 0, 1200, 800)
+    temp = st.slider("Temperatura (°C)", -10, 80, 35)
 
-    if file:
-        df = pd.read_csv(file)
-        st.write(df.head())
+    # modelo manual
+    power = irr * 0.18 - temp * 0.3
+    if power < 0:
+        power = 0
 
-        if {"irradiance", "temperature", "power"}.issubset(df.columns):
-            if st.button("Treinar Modelo"):
-                X = df[["irradiance", "temperature"]]
-                y = df["power"]
+    st.metric("Geração Estimada (kW)", f"{power:.2f}")
 
-                model = LinearRegression()
-                model.fit(X, y)
+    st.bar_chart(pd.DataFrame({"Potência (kW)": [power]}))
 
-                st.success("Modelo treinado!")
-
-                irr = st.slider("Irradiância (W/m²)", 0, 1200, 800)
-                temp = st.slider("Temperatura (°C)", -10, 80, 35)
-
-                pred = model.predict([[irr, temp]])[0]
-
-                st.metric("Geração Estimada (kW)", f"{pred:.2f}")
-
-                fig = go.Figure(go.Indicator(
-                    mode="number+gauge",
-                    value=pred,
-                    title={"text": "Potência"},
-                    gauge={"axis": {"range": [0, max(1000, pred*1.5)]}}
-                ))
-                st.plotly_chart(fig, use_container_width=True)
-        else:
-            st.warning("O CSV deve conter: irradiance, temperature, power")
-
-
-# =====================================
-#         3) DIGITAL TWIN
-# =====================================
+# ============================================================
+# 3) DIGITAL TWIN (SEM PLOTLY)
+# ============================================================
 elif menu == "🏭 Digital Twin de Subestação / Solar":
-    st.title("🏭 Digital Twin da Subestação / Usina Solar")
+    st.title("🏭 Digital Twin Simplificado (Sem Plotly)")
 
     tensao = st.slider("Tensão (kV)", 10, 500, 69)
     corrente = st.slider("Corrente (A)", 0, 3000, 450)
     temperatura = st.slider("Temperatura (°C)", -10, 120, 45)
 
-    potencia = (tensao * 1000 * corrente) / (np.sqrt(3) * 1000)
+    potencia_mva = (tensao * corrente * 1000) / (np.sqrt(3) * 1e6)
 
-    st.metric("Potência Aparente (MVA)", f"{potencia/1e6:.3f}")
+    st.metric("Potência Aparente (MVA)", f"{potencia_mva:.3f}")
 
-    fig = go.Figure(go.Indicator(
-        mode="number+gauge",
-        value=temperatura,
-        title={"text": "Temperatura"},
-        gauge={"axis": {"range": [-10, 120]}}
-    ))
-    st.plotly_chart(fig, use_container_width=True)
+    st.subheader("Temperatura do Sistema")
+    st.line_chart(pd.DataFrame({"Temperatura": [temperatura]}))
+
+    st.write("Simulação simples e compatível com ambientes restritos.")
+
 
 
