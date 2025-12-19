@@ -9,6 +9,8 @@ Funcionalidades:
 - Análise de risco e violações de tensão
 - Visualização geoespacial
 - Interface web interativa com Streamlit
+
+Arquivo: sistema_mmgd_completo.py
 """
 
 import pandapower as pp
@@ -577,6 +579,7 @@ if __name__ == "__main__":
             print("\n" + "="*60)
             print("TESTE CONCLUÍDO COM SUCESSO!")
             print("="*60)
+
 
 
 
