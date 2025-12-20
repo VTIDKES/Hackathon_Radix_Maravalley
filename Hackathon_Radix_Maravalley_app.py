@@ -377,6 +377,7 @@ def criar_grafico_previsao(clima):
 # ============================================================================
 
 def main():
+    """Função principal da aplicação"""
     # Título e descrição
     st.title("⚡ Plataforma Inteligente MMGD")
     st.markdown("### Integração ONS/ANEEL - Análise de Micro e Minigeração Distribuída")
@@ -736,7 +737,6 @@ if __name__ == "__main__":
             )
         
         with col3
-
 
 
 
